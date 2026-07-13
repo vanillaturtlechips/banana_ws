@@ -1,0 +1,8 @@
+# colcon(rosdep)가 안 잡는 pip 의존. `pip install -r requirements.txt`
+ultralytics
+numpy
+
+# ⚠️ PyTorch — RTX 5080(Blackwell / sm_120)은 CUDA 12.8 빌드가 필요합니다.
+# 기본 torch를 깔면 "no kernel image available for sm_120" 에러가 납니다.
+# 아래를 먼저 설치하세요 (ultralytics가 끌어오는 torch보다 우선):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128

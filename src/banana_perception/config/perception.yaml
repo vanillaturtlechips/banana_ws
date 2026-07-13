@@ -1,0 +1,10 @@
+/banana_perception:
+  ros__parameters:
+    image_topic: /camera/color/image_raw
+    command_topic: /banana/command
+    detection_topic: /banana/detection
+    model_path: models/best.pt          # 없으면 StubDetector 폴백
+    conf_threshold: 0.5
+    device: cuda:0                       # GPU 없으면 cpu
+    # ⚠️ 학습 클래스 순서와 반드시 일치! (Roboflow export 순서 확인)
+    classes: [unripe, ripe, overripe, rotten]

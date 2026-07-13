@@ -23,6 +23,12 @@ dist/
 /install/
 /log/
 
+# --- 모델 가중치 (git에 넣지 말 것, 수십~수백 MB) ---
+*.pt
+*.engine
+*.onnx
+*.pth
+
 # --- IDE ---
 .vscode/
 .idea/
