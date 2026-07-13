@@ -1,0 +1,8 @@
+# colcon(rosdep)가 안 잡는 pip 의존. `pip install -r requirements.txt`
+starlette
+uvicorn[standard]
+aiortc
+av
+httpx
+pydantic>=2
+numpy

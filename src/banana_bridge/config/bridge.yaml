@@ -1,0 +1,20 @@
+# banana_bridge 런타임 설정
+server:
+  host: 0.0.0.0
+  port: 8000
+
+ros:
+  command_topic: /banana/command
+  state_topic: /banana/system_state     # aggregator와 합의 (B안)
+  image_topic: /camera/color/image_raw  # 무거우면 .../compressed 로
+  state_throttle_hz: 5
+
+webrtc:
+  video_fps: 15
+  # LAN 전용망 → ice_servers 비움 (STUN/TURN 불필요)
+
+llm:
+  provider: api            # api | local
+  api_model: claude-haiku-4-5
+  local_endpoint: http://localhost:11434
+  # api_key 는 환경변수 BANANA_LLM_API_KEY 로 (yaml에 키 넣지 말 것)
