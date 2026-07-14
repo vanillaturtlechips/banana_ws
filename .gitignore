@@ -29,6 +29,13 @@ dist/
 *.onnx
 *.pth
 
+# --- 로컬 데이터/산출물 (git에 넣지 말 것) ---
+captures/
+captures_*backup/
+banana_die_dataset*/
+/runs/
+cam_snap_*.png
+
 # --- IDE ---
 .vscode/
 .idea/
