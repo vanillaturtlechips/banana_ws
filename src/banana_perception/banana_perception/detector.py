@@ -96,7 +96,10 @@ class YoloDetector:
 
     def detect(self, frame: np.ndarray) -> List[Det]:
         h, w = frame.shape[:2]
-        results = self._model(frame, conf=self._conf, device=self._device, verbose=False)
+        # 노드는 RGB를 넘기지만 ultralytics(cv2 관례)는 BGR 기대.
+        # 학습 데이터가 BGR(jpg)이라 반드시 맞춰야 색 분류가 정상 동작한다.
+        bgr = np.ascontiguousarray(frame[:, :, ::-1])
+        results = self._model(bgr, conf=self._conf, device=self._device, verbose=False)
         dets: List[Det] = []
         for r in results:
             for box in r.boxes:
