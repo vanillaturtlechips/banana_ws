@@ -65,6 +65,7 @@ def generate_launch_description() -> LaunchDescription:
             launch_arguments={"align_depth.enable": "true",
                               # 학습 촬영과 동일 해상도(1280x800)로 맞춰 색·크기 도메인시프트 완화
                               "rgb_camera.color_profile": "1280x800x30",
+                              "initial_reset": "true",   # wedge된 장치 기동 시 리셋
                               "enable_infra": "false",
                               "enable_infra1": "false",
                               "enable_infra2": "false"}.items(),
