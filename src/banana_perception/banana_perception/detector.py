@@ -29,6 +29,35 @@ class Det:
     h: int
     image_width: int
     image_height: int
+    class_id: int = 0
+    # 회전 사각형 (grasp yaw용). 기본은 축정렬 박스 폴백값.
+    center_x: float = 0.0
+    center_y: float = 0.0
+    rect_w: float = 0.0
+    rect_h: float = 0.0
+    angle_deg: float = 0.0
+
+
+def rotated_rect_green(frame: np.ndarray, x1: int, y1: int, x2: int, y2: int):
+    """박스 내부 초록 테두리로 minAreaRect → (cx,cy,w,h,angle) 전체프레임 좌표.
+    cv2 없거나 초록 미검출이면 None (호출측이 축정렬 박스로 폴백)."""
+    try:
+        import cv2  # 지연 import (ROS 런타임에 cv2 없어도 노드는 뜬다)
+        ya, ya2 = max(0, y1), max(0, y2)
+        xa, xa2 = max(0, x1), max(0, x2)
+        roi = frame[ya:ya2, xa:xa2]
+        if roi.size == 0:
+            return None
+        # node._to_numpy 는 RGB 를 넘김 → RGB2HSV
+        hsv = cv2.cvtColor(roi, cv2.COLOR_RGB2HSV)
+        mask = cv2.inRange(hsv, (35, 60, 40), (90, 255, 255))
+        cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            return None
+        (cx, cy), (w, h), ang = cv2.minAreaRect(max(cnts, key=cv2.contourArea))
+        return (cx + xa, cy + ya, w, h, ang)
+    except Exception:
+        return None
 
 
 class StubDetector:
@@ -42,11 +71,15 @@ class StubDetector:
         if random.random() < 0.2:      # 가끔 아무것도 없음
             return []
         bw, bh = int(w * 0.3), int(h * 0.35)
+        stage = random.choice(self._classes)
+        bx, by = random.randint(0, w - bw), random.randint(0, h - bh)
         return [Det(
-            stage=random.choice(self._classes),
+            stage=stage,
             confidence=round(0.80 + random.random() * 0.19, 3),
-            x=random.randint(0, w - bw), y=random.randint(0, h - bh),
-            w=bw, h=bh, image_width=w, image_height=h,
+            x=bx, y=by, w=bw, h=bh, image_width=w, image_height=h,
+            class_id=self._classes.index(stage),
+            center_x=bx + bw / 2, center_y=by + bh / 2,
+            rect_w=float(bw), rect_h=float(bh), angle_deg=0.0,
         )]
 
 
@@ -71,11 +104,19 @@ class YoloDetector:
                 if cls >= len(self._classes):
                     continue
                 x1, y1, x2, y2 = (int(v) for v in box.xyxy[0])
+                rr = rotated_rect_green(frame, x1, y1, x2, y2)
+                if rr is None:      # 초록 미검출 → 축정렬 박스 폴백
+                    rr = (x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2,
+                          float(x2 - x1), float(y2 - y1), 0.0)
+                cxr, cyr, rw, rh, ang = rr
                 dets.append(Det(
                     stage=self._classes[cls],
                     confidence=float(box.conf[0]),
                     x=x1, y=y1, w=x2 - x1, h=y2 - y1,
                     image_width=w, image_height=h,
+                    class_id=cls,
+                    center_x=cxr, center_y=cyr,
+                    rect_w=rw, rect_h=rh, angle_deg=ang,
                 ))
         return dets
 

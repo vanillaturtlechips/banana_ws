@@ -9,6 +9,9 @@
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
   <exec_depend>banana_command</exec_depend>
 
   <!-- pip 의존(ultralytics, torch, numpy)은 requirements.txt 참고 -->
