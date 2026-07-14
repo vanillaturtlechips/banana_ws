@@ -49,9 +49,12 @@ async def _chat(ws: WebSocket, data: dict) -> None:
 
 @bus.on("webrtc/offer")
 async def _offer(ws: WebSocket, data: dict) -> None:
-    answer = await webrtc.handle_offer(
-        ws.state.cid, data["sdp"], data.get("sdpType", "offer"))
-    await ws.send_json(answer)
+    try:
+        answer = await webrtc.handle_offer(
+            ws.state.cid, data["sdp"], data.get("sdpType", "offer"))
+        await ws.send_json(answer)
+    except Exception:   # 새로고침/종료로 클라가 사라지면 answer 전송 실패 → 정리만
+        await webrtc.close(ws.state.cid)
 
 
 @bus.on("webrtc/bye")

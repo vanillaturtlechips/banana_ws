@@ -16,8 +16,12 @@ from typing import Optional
 
 import numpy as np
 from av import VideoFrame
-from aiortc import RTCPeerConnection, RTCSessionDescription
+from aiortc import (RTCConfiguration, RTCIceServer, RTCPeerConnection,
+                    RTCSessionDescription)
 from aiortc.mediastreams import MediaStreamTrack
+
+# localhost/LAN 이어도 브라우저 ICE가 STUN을 요구하는 경우가 있어 하나 지정
+ICE_SERVERS = [RTCIceServer(urls="stun:stun.l.google.com:19302")]
 
 VIDEO_CLOCK_RATE = 90000
 VIDEO_FPS = 15  # 송출 목표 fps (전시 데모엔 15~20이면 충분)
@@ -85,7 +89,10 @@ async def _wait_ice_complete(pc: RTCPeerConnection) -> None:
         if pc.iceGatheringState == "complete":
             done.set()
 
-    await done.wait()
+    try:                       # STUN 지연 대비: 오래 안 끝나면 모은 후보로 진행
+        await asyncio.wait_for(done.wait(), timeout=3.0)
+    except asyncio.TimeoutError:
+        pass
 
 
 class WebRTCManager:
@@ -100,7 +107,7 @@ class WebRTCManager:
         """{type:"webrtc/offer"} 처리 → {type:"webrtc/answer"} 페이로드 반환."""
         await self.close(client_id)  # 재협상 시 기존 것 정리
 
-        pc = RTCPeerConnection()  # LAN이라 iceServers 비움 (STUN/TURN 없음)
+        pc = RTCPeerConnection(RTCConfiguration(iceServers=ICE_SERVERS))
         self._pcs[client_id] = pc
 
         @pc.on("connectionstatechange")
