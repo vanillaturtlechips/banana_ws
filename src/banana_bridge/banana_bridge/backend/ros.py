@@ -18,6 +18,7 @@ from ..domain.state import to_live_state, _map_detection_msg
 from ..transport.webrtc import FrameSource
 
 _BIN_LABEL = {"bin1": "1번 보관함", "bin2": "2번 보관함(쓰레기통)"}
+_STAGE_KO = {"unripe": "안익음", "ripe": "적당", "overripe": "너무익음", "rotten": "썩음"}
 
 
 class BridgeRos:
@@ -47,9 +48,10 @@ class BridgeRos:
         from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
         from sensor_msgs.msg import Image
         from std_msgs.msg import String
-        from banana_command.msg import SortCommand, Detection
+        from banana_command.msg import SortCommand, Detection, DetectionArray
 
         self._SortCommand = SortCommand
+        self._dets: list = []   # 최신 감지 배열 (scene_summary용)
         sensor_qos = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST, depth=1,
@@ -65,6 +67,8 @@ class BridgeRos:
             Detection, "/banana/detection", self._on_detection, 10)
         self._node.create_subscription(
             String, "/banana/agent_status", self._on_agent_status, 10)
+        self._node.create_subscription(
+            DetectionArray, "/banana/detections", self._on_detections, 10)
         cam_topic = os.getenv("BANANA_CAMERA_TOPIC", "/camera/camera/color/image_raw")
         self._node.create_subscription(Image, cam_topic, self._on_image, sensor_qos)
 
@@ -96,6 +100,23 @@ class BridgeRos:
 
     def _push(self) -> None:
         self._loop.call_soon_threadsafe(self._q.put_nowait, dict(self._live))
+
+    def _on_detections(self, msg) -> None:  # noqa: ANN001
+        self._dets = list(msg.detections)
+
+    def scene_summary(self) -> str:
+        # LLM 상태질문용: 현재 감지를 화면 왼→오 순으로 요약
+        dets = getattr(self, "_dets", [])
+        if not dets:
+            return "감지된 바나나 없음."
+        ordered = sorted(dets, key=lambda d: d.center_x)
+        n = len(ordered)
+        parts = []
+        for i, d in enumerate(ordered):
+            pos = ("유일" if n == 1 else "가장왼쪽" if i == 0
+                   else "가장오른쪽" if i == n - 1 else f"{i+1}번째")
+            parts.append(f"[{pos}] {d.stage}({_STAGE_KO.get(d.stage, d.stage)})")
+        return "감지된 바나나: " + ", ".join(parts)
 
     def _on_detection(self, msg) -> None:  # noqa: ANN001
         # 감지 부분만 갱신 (robot 상태는 에이전트가 갱신)

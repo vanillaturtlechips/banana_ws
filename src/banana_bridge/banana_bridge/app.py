@@ -41,7 +41,8 @@ bus = Dispatcher()
 # --- 도메인 핸들러 등록 (IN 메시지) --------------------------------
 @bus.on("chat")
 async def _chat(ws: WebSocket, data: dict) -> None:
-    model, reply = await parse_utterance(data["payload"])
+    scene = getattr(backend, "scene_summary", lambda: "")()   # 현재 감지 상태 주입
+    model, reply = await parse_utterance(data["payload"], scene)
     if model is not None:
         backend.publish_command(model)
     await ws.send_json({"type": "chat", "payload": reply})

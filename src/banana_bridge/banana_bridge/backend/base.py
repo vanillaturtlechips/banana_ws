@@ -27,3 +27,7 @@ class Backend(Protocol):
     def state_stream(self) -> AsyncIterator[dict]:
         """프론트로 보낼 LiveState dict를 비동기로 흘린다."""
         ...
+
+    def scene_summary(self) -> str:
+        """현재 감지 상태 요약(LLM 상태질문용). 없으면 ''."""
+        ...

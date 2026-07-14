@@ -46,6 +46,9 @@ class FakeBridge:
         for t in self._tasks:
             t.cancel()
 
+    def scene_summary(self) -> str:
+        return ""   # 페이크는 실감지 없음 → 상태주입 없음
+
     # ---- OUT: 명령 수신 -------------------------------------------
     def publish_command(self, model: SortCommandModel) -> None:
         # 실물이면 여기서 ROS publish. 페이크는 파이프라인에 반영만.
