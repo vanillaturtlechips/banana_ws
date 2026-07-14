@@ -1,0 +1,13 @@
+# Default initial positions for e0509's ros2_control fake system
+
+initial_positions:
+  joint_1: 0
+  joint_2: 0
+  joint_3: 0
+  joint_4: 0
+  joint_5: 0
+  joint_6: 0
+  rh_l1: 0
+  rh_l2: 0
+  rh_p12_rn: 0
+  rh_r2: 0

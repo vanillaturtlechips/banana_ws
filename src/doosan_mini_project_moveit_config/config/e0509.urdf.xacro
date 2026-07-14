@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="e0509">
+    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+
+    <!-- Import e0509 urdf file -->
+    <xacro:include filename="$(find doosan_mini_project_cpp)/models/robot_arm/urdf/e0509_with_gripper.urdf" />
+
+    <!-- Import control_xacro -->
+    <xacro:include filename="e0509.ros2_control.xacro" />
+
+
+    <xacro:e0509_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+
+</robot>
