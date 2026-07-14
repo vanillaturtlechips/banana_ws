@@ -11,9 +11,7 @@
 """
 from __future__ import annotations
 
-import dataclasses
 import math
-from collections import Counter, deque
 
 import numpy as np
 import rclpy
@@ -54,8 +52,6 @@ class PerceptionNode(Node):
         self._device = p("device", "cuda:0").value
         self._base_frame = p("base_frame", "base_link").value
         self._depth_scale = p("depth_scale", 0.001).value   # 16UC1 mm → m
-        # 시간 스무딩: 최근 N프레임 다수결 클래스로 깜빡임 억제
-        self._vote = deque(maxlen=p("vote_window", 12).value)
 
         self._detector = make_detector(
             self._model_path, self._classes, self._conf, self._device)
@@ -106,19 +102,10 @@ class PerceptionNode(Node):
         arr.detections = [self._to_msg(d, msg.header) for d in dets]
         self._arr_pub.publish(arr)
 
-        # 단일 최적 1개 (기존 웹/브리지 호환, voting 적용)
+        # 단일 최적 1개 (기존 웹/브리지 호환). BGR 색순서 정상 + 초록게이트라
+        # 프레임별로 신뢰할 수 있어 voting 불필요 → 즉각 반영.
         target = select_target(dets, self._target_stages)
-        # temporal voting: 최근 창 다수결 클래스로 스무딩 (인접클래스 깜빡임 억제)
-        self._vote.append(target.stage if target is not None else None)
         if target is not None:
-            votes = [v for v in self._vote if v is not None]
-            voted = Counter(votes).most_common(1)[0][0] if votes else target.stage
-            if voted != target.stage:
-                alt = [d for d in dets if d.stage == voted]
-                target = (max(alt, key=lambda d: d.confidence) if alt
-                          else dataclasses.replace(
-                              target, stage=voted,
-                              class_id=self._classes.index(voted)))
             self._pub.publish(self._to_msg(target, msg.header))
 
     @staticmethod

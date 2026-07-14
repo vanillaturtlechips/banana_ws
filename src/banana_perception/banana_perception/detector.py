@@ -54,7 +54,10 @@ def rotated_rect_green(frame: np.ndarray, x1: int, y1: int, x2: int, y2: int):
         cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not cnts:
             return None
-        (cx, cy), (w, h), ang = cv2.minAreaRect(max(cnts, key=cv2.contourArea))
+        c = max(cnts, key=cv2.contourArea)
+        if cv2.contourArea(c) < 300:   # 초록 테두리가 충분치 않으면 = 주사위 아님
+            return None
+        (cx, cy), (w, h), ang = cv2.minAreaRect(c)
         return (cx + xa, cy + ya, w, h, ang)
     except Exception:
         return None
@@ -108,9 +111,8 @@ class YoloDetector:
                     continue
                 x1, y1, x2, y2 = (int(v) for v in box.xyxy[0])
                 rr = rotated_rect_green(frame, x1, y1, x2, y2)
-                if rr is None:      # 초록 미검출 → 축정렬 박스 폴백
-                    rr = (x1 + (x2 - x1) / 2, y1 + (y2 - y1) / 2,
-                          float(x2 - x1), float(y2 - y1), 0.0)
+                if rr is None:      # 초록 테두리 없음 = 허위 감지(빈 배경 등) → 버림
+                    continue
                 cxr, cyr, rw, rh, ang = rr
                 dets.append(Det(
                     stage=self._classes[cls],
