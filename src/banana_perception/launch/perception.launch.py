@@ -44,7 +44,9 @@ def generate_launch_description() -> LaunchDescription:
                  "--x", "0.40", "--y", "0.0", "--z", "0.90",
                  "--roll", "3.14159", "--pitch", "0.0", "--yaw", "0.0",
                  "--frame-id", "base_link",
-                 "--child-frame-id", "camera_color_optical_frame",
+                 # 카메라 루트(camera_link)로 연결 — optical은 RealSense가 발행하므로
+                 # 여기서 optical을 직접 가리키면 부모 충돌. base_link→camera_link→…→optical.
+                 "--child-frame-id", "camera_link",
              ],
              output="screen"),
     ])
