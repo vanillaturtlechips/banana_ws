@@ -14,7 +14,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
-from banana_command.msg import SortCommand, DetectionArray
+from banana_command.msg import SortCommand, Detection, DetectionArray
 
 from .agent import select_object, check_feasibility, PICKABLE
 
@@ -27,12 +27,15 @@ class AgentNode(Node):
         cmd_topic = p("command_topic", "/banana/command").value
         self._target_topic = p("pick_target_topic", "/banana/pick_target").value
         self._status_topic = p("agent_status_topic", "/banana/agent_status").value
+        # MoveIt(pick_place_command_node)이 구독하는 토픽 — 선택된 Detection 발행
+        self._moveit_topic = p("moveit_detection_topic", "/detection").value
 
         self._dets: list = []
         self.create_subscription(DetectionArray, dets_topic, self._on_dets, 10)
         self.create_subscription(SortCommand, cmd_topic, self._on_cmd, 10)
         self._pose_pub = self.create_publisher(PoseStamped, self._target_topic, 10)
         self._status_pub = self.create_publisher(String, self._status_topic, 10)
+        self._det_pub = self.create_publisher(Detection, self._moveit_topic, 10)
         self.get_logger().info("banana_agent 시작 (command + detections → 선택+게이트)")
 
     def _on_dets(self, msg: DetectionArray) -> None:
@@ -61,8 +64,11 @@ class AgentNode(Node):
 
         ok, reason, dest = check_feasibility(target)
         self._emit(action, ok, target, dest, reason, by)
-        if ok and target is not None and getattr(target, "has_pose", False):
-            self._pose_pub.publish(target.grasp_pose)   # MoveIt로 집기 목표
+        if ok and target is not None:
+            # 선택+게이트 통과한 Detection을 MoveIt(pick_place)로 → 실제 집기
+            self._det_pub.publish(target)
+            if getattr(target, "has_pose", False):
+                self._pose_pub.publish(target.grasp_pose)
 
     def _emit(self, action, ok, target, dest, reason, by) -> None:
         status = {
