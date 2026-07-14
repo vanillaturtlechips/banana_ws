@@ -7,14 +7,17 @@ rclpy는 별 스레드에서 spin. rclpy import는 start() 안에서 (페이크 
 from __future__ import annotations
 
 import asyncio
+import os
 import threading
 from typing import AsyncIterator, Optional
 
 import numpy as np
 
 from ..domain.schema import SortCommandModel
-from ..domain.state import to_live_state, detection_msg_to_live_state
+from ..domain.state import to_live_state, _map_detection_msg
 from ..transport.webrtc import FrameSource
+
+_BIN_LABEL = {"bin1": "1번 보관함", "bin2": "2번 보관함(쓰레기통)"}
 
 
 class BridgeRos:
@@ -33,11 +36,17 @@ class BridgeRos:
         # start()는 _startup(async, 서버 루프 안)에서 호출 → 올바른 루프를 잡음.
         self._loop = asyncio.get_running_loop()
         self._q = asyncio.Queue()
+        # 병합 상태(미니 aggregator): 감지 + 에이전트 상태를 한 LiveState로
+        self._live: dict = {
+            "robot": "idle", "robotMessage": "바나나를 기다리는 중...",
+            "detection": None, "logs": [], "exceptions": [],
+        }
 
         import rclpy
         from rclpy.node import Node
         from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
         from sensor_msgs.msg import Image
+        from std_msgs.msg import String
         from banana_command.msg import SortCommand, Detection
 
         self._SortCommand = SortCommand
@@ -55,7 +64,9 @@ class BridgeRos:
         self._node.create_subscription(
             Detection, "/banana/detection", self._on_detection, 10)
         self._node.create_subscription(
-            Image, "/camera/color/image_raw", self._on_image, sensor_qos)
+            String, "/banana/agent_status", self._on_agent_status, 10)
+        cam_topic = os.getenv("BANANA_CAMERA_TOPIC", "/camera/camera/color/image_raw")
+        self._node.create_subscription(Image, cam_topic, self._on_image, sensor_qos)
 
         self._thread = threading.Thread(
             target=lambda: rclpy.spin(self._node), daemon=True)
@@ -83,10 +94,32 @@ class BridgeRos:
         live = to_live_state(msg)
         self._loop.call_soon_threadsafe(self._q.put_nowait, live)  # 스레드→asyncio
 
+    def _push(self) -> None:
+        self._loop.call_soon_threadsafe(self._q.put_nowait, dict(self._live))
+
     def _on_detection(self, msg) -> None:  # noqa: ANN001
-        # aggregator 없이 Detection → LiveState 직접 변환 (L2)
-        live = detection_msg_to_live_state(msg)
-        self._loop.call_soon_threadsafe(self._q.put_nowait, live)
+        # 감지 부분만 갱신 (robot 상태는 에이전트가 갱신)
+        self._live["detection"] = _map_detection_msg(msg)
+        self._push()
+
+    def _on_agent_status(self, msg) -> None:  # noqa: ANN001
+        # 에이전트 결정 → robot/robotMessage 갱신 (선택·게이트 결과)
+        import json
+        try:
+            st = json.loads(msg.data)
+        except Exception:
+            return
+        if st.get("action") in ("stop", "rescan"):
+            self._live["robot"] = "idle"
+            self._live["robotMessage"] = "대기 중이에요"
+        elif st.get("ok"):
+            dest = _BIN_LABEL.get(st.get("bin"), st.get("bin"))
+            self._live["robot"] = "picking"
+            self._live["robotMessage"] = f"{st.get('stage')} → {dest}(으)로 집는 중 🦾"
+        else:  # 게이트 차단 (unripe 등)
+            self._live["robot"] = "error"
+            self._live["robotMessage"] = st.get("reason") or "그 명령은 못 해요"
+        self._push()
 
     def _on_image(self, msg) -> None:  # noqa: ANN001
         arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
