@@ -1,0 +1,266 @@
+<?xml version="1.0"?>
+<robot name="rh_p12_rn" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- some parameters -->
+  <xacro:property name="pi" value="3.141592654" />
+
+  <!-- Import all Gazebo-customization elements, including Gazebo colors -->
+  <xacro:include filename="$(find doosan_mini_project_cpp)/models/gripper/xacro/robotis_rh_p12_rn_gazebo.xacro" />
+
+  <!-- Import Rviz colors -->
+  <xacro:include filename="$(find doosan_mini_project_cpp)/models/gripper/xacro/robotis_rh_p12_rn_material.xacro" />
+
+
+
+<xacro:macro name="robotis_rh_p12_rn" params="parent prefix base_xyz:='0 0 0' base_rpy:='0 0 0'">
+
+
+
+
+  <!-- ================== Links ================== -->
+
+    <!-- Used for fixing robot to Gazebo 'link 1' -->
+    <!-- <link name="${prefix}world">
+    </link> -->
+
+    <!-- base -->
+    <link name="${prefix}rh_p12_rn_base">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/base.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/base.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0.000 0.000 0.032" rpy="0 0 0"/>
+        <mass value="0.236"/>
+        <!--<inertia ixx="0.00017" ixy="0.0" ixz="0.0" iyy="0.00011" iyz="0.0" izz="0.00017" />-->
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+    <!-- rh_p12_rn_r1 -->
+    <link name="${prefix}rh_p12_rn_r1">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/r1.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/r1.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0.000 0.034 0.004" rpy="0 0 0"/>
+        <mass value="0.068"/>
+        <!--<inertia ixx="0.00004" ixy="0.0" ixz="0.0" iyy="0.00002" iyz="-0.00001" izz="0.00002" />-->
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+    <!-- rh_p12_rn_l1 -->
+    <link name="${prefix}rh_p12_rn_l1">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/l1.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/l1.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0.000 -0.034 0.004" rpy="0 0 0"/>
+        <mass value="0.068"/>
+        <!--<inertia ixx="0.00004" ixy="0.0" ixz="0.0" iyy="0.00002" iyz="0.00001" izz="0.00002" />-->
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+    <!-- rh_p12_rn_r2 -->
+    <link name="${prefix}rh_p12_rn_r2">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/r2.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/r2.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0.000 0.006 0.011" rpy="0 0 0"/>
+        <mass value="0.022"/>
+        <!--<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.0" />-->
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+    <!-- rh_p12_rn_l2 -->
+    <link name="${prefix}rh_p12_rn_l2">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/l2.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://doosan_mini_project_cpp/models/gripper/meshes/l2.stl" scale="0.001 0.001 0.001"/>
+        </geometry>
+        <material name="grey"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0.000 -0.006 0.011" rpy="0 0 0"/>
+        <mass value="0.022"/>
+        <!--<inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.0" />-->
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+  <!-- ========================================== -->
+
+
+
+
+
+
+  <!-- ================== Joints ================== -->
+
+    <joint name="${prefix}parent_arm_to_base" type="fixed">
+      <origin xyz="${base_xyz}" rpy="${base_rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${prefix}rh_p12_rn_base"/>
+    </joint>
+
+    <!-- Joint -->
+    <joint name="${prefix}rh_p12_rn" type="revolute">
+      <parent link="${prefix}rh_p12_rn_base"/>
+      <child link="${prefix}rh_p12_rn_r1"/>
+      <origin xyz="0.0 0.008 0.048" rpy="0 0 0"/>
+      <axis xyz="1 0 0"/>
+      <limit velocity="6.5" effort="1000" lower="0.0" upper="1.1" />
+      <dynamics damping="0.7"/>
+    </joint>
+
+    <!-- Right Joint 2 -->
+    <joint name="${prefix}rh_r2" type="revolute">
+      <parent link="${prefix}rh_p12_rn_r1"/>
+      <child link="${prefix}rh_p12_rn_r2"/>
+      <origin xyz="0.0 0.0493634 0.0285" rpy="0 0 0"/>
+      <axis xyz="-1 0 0"/>
+      <limit velocity="6.5" effort="1000" lower="0.0" upper="1.0" />
+      <dynamics damping="0.7"/>
+    </joint>
+
+    <!-- Left Joint 1 -->
+    <joint name="${prefix}rh_l1" type="revolute">
+      <parent link="${prefix}rh_p12_rn_base"/>
+      <child link="${prefix}rh_p12_rn_l1"/>
+      <origin xyz="0.0 -0.008 0.048" rpy="0 0 0"/>
+      <axis xyz="-1 0 0"/>
+      <limit velocity="6.5" effort="1000" lower="0.0" upper="1.1" />
+      <dynamics damping="0.7"/>
+    </joint>
+
+    <!-- Left Joint 2 -->
+    <joint name="${prefix}rh_l2" type="revolute">
+      <parent link="${prefix}rh_p12_rn_l1"/>
+      <child link="${prefix}rh_p12_rn_l2"/>
+      <origin xyz="0.0 -0.0493634 0.0285" rpy="0 0 0"/>
+      <axis xyz="1 0 0"/>
+      <limit velocity="6.5" effort="1000" lower="0.0" upper="1.0" />
+      <dynamics damping="0.7"/>
+    </joint>
+
+
+  <!-- ========================================== -->
+
+
+
+
+
+  <!-- ================== Transmissions ================== -->
+
+    <transmission name="${prefix}tran_r1">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}rh_p12_rn">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}motor_r1">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}tran_r2">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}rh_r2">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}motor_r2">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}tran_l1">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}rh_l1">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}motor_l1">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+    <transmission name="${prefix}tran_l2">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${prefix}rh_l2">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${prefix}motor_l2">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+
+  <!-- ================================================= -->
+
+
+
+</xacro:macro>
+
+
+</robot>

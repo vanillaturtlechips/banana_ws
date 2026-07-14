@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: doosan_mini_project_cpp
+    relative_path: models/robot_arm/urdf/e0509_with_gripper.urdf
+  srdf:
+    relative_path: config/e0509.srdf
+  package_settings:
+    author_name: kdy
+    author_email: kdydk93052753@gmail.com
+    generated_timestamp: 1783930193
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
