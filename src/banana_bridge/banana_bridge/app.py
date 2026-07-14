@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from contextlib import asynccontextmanager
 
 from starlette.applications import Starlette
 from starlette.routing import WebSocketRoute
@@ -78,8 +79,16 @@ async def _shutdown() -> None:
     await webrtc.close_all()
 
 
+@asynccontextmanager
+async def _lifespan(_app: Starlette):
+    await _startup()
+    try:
+        yield
+    finally:
+        await _shutdown()
+
+
 app = Starlette(
     routes=[WebSocketRoute("/ws", make_gateway(bus, broadcaster, on_cleanup=_cleanup))],
-    on_startup=[_startup],
-    on_shutdown=[_shutdown],
+    lifespan=_lifespan,   # 최신 Starlette: on_startup/on_shutdown 대신 lifespan
 )
