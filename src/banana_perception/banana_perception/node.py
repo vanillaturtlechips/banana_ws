@@ -11,7 +11,10 @@
 """
 from __future__ import annotations
 
+import dataclasses
 import math
+from collections import Counter, deque
+
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -19,7 +22,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import PointStamped
-from banana_command.msg import SortCommand, Detection
+from banana_command.msg import SortCommand, Detection, DetectionArray
 
 import tf2_ros
 import tf2_geometry_msgs  # noqa: F401  (PointStamped do_transform 등록용)
@@ -44,12 +47,15 @@ class PerceptionNode(Node):
         self._caminfo_topic = p("camera_info_topic", "/camera/color/camera_info").value
         self._cmd_topic = p("command_topic", "/banana/command").value
         self._det_topic = p("detection_topic", "/banana/detection").value
+        self._dets_topic = p("detections_topic", "/banana/detections").value
         self._model_path = p("model_path", "models/best.pt").value
         self._conf = p("conf_threshold", 0.5).value
         self._classes = p("classes", list(STAGES)).value
         self._device = p("device", "cuda:0").value
         self._base_frame = p("base_frame", "base_link").value
         self._depth_scale = p("depth_scale", 0.001).value   # 16UC1 mm → m
+        # 시간 스무딩: 최근 N프레임 다수결 클래스로 깜빡임 억제
+        self._vote = deque(maxlen=p("vote_window", 12).value)
 
         self._detector = make_detector(
             self._model_path, self._classes, self._conf, self._device)
@@ -63,6 +69,7 @@ class PerceptionNode(Node):
 
         # I/O
         self._pub = self.create_publisher(Detection, self._det_topic, 10)
+        self._arr_pub = self.create_publisher(DetectionArray, self._dets_topic, 10)
         self.create_subscription(Image, self._image_topic, self._on_image, SENSOR_QOS)
         self.create_subscription(Image, self._depth_topic, self._on_depth, SENSOR_QOS)
         self.create_subscription(CameraInfo, self._caminfo_topic, self._on_caminfo, SENSOR_QOS)
@@ -92,8 +99,26 @@ class PerceptionNode(Node):
     def _on_image(self, msg: Image) -> None:
         frame = self._to_numpy(msg)
         dets = self._detector.detect(frame)
+
+        # 멀티 오브젝트: 감지 전부를 배열로 발행 (셀렉터/게이트/멀티다이스용)
+        arr = DetectionArray()
+        arr.header = msg.header
+        arr.detections = [self._to_msg(d, msg.header) for d in dets]
+        self._arr_pub.publish(arr)
+
+        # 단일 최적 1개 (기존 웹/브리지 호환, voting 적용)
         target = select_target(dets, self._target_stages)
+        # temporal voting: 최근 창 다수결 클래스로 스무딩 (인접클래스 깜빡임 억제)
+        self._vote.append(target.stage if target is not None else None)
         if target is not None:
+            votes = [v for v in self._vote if v is not None]
+            voted = Counter(votes).most_common(1)[0][0] if votes else target.stage
+            if voted != target.stage:
+                alt = [d for d in dets if d.stage == voted]
+                target = (max(alt, key=lambda d: d.confidence) if alt
+                          else dataclasses.replace(
+                              target, stage=voted,
+                              class_id=self._classes.index(voted)))
             self._pub.publish(self._to_msg(target, msg.header))
 
     @staticmethod

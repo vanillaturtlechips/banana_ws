@@ -23,6 +23,7 @@ setup(
     entry_points={
         "console_scripts": [
             "perception = banana_perception.node:main",
+            "agent = banana_perception.agent_node:main",
             "fake_camera = banana_perception.fake_camera:main",
         ],
     },

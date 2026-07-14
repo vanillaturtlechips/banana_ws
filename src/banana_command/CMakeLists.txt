@@ -9,6 +9,7 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SortCommand.msg"
   "msg/Detection.msg"
+  "msg/DetectionArray.msg"
   DEPENDENCIES std_msgs geometry_msgs
 )
 
