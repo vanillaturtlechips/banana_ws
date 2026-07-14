@@ -24,12 +24,22 @@ API_MODEL = os.getenv("BANANA_LLM_MODEL", "claude-opus-4-8")
 LOCAL_ENDPOINT = os.getenv("BANANA_LLM_LOCAL", "http://localhost:11434")
 
 SYSTEM_PROMPT = (
-    "You parse commands for a banana-sorting robot. "
-    "If the message is a control command, reply with ONE JSON line: "
-    '{"action":"sort|pick_only|stop|rescan",'
-    '"target_stages":["unripe|ripe|overripe|rotten"],"params":{}} '
-    "Otherwise reply briefly in Korean, no JSON. "
-    "All natural-language replies must be in Korean."
+    "You parse Korean commands for a banana-sorting robot (camera + arm). "
+    "target_stages holds ONLY ripeness values: unripe/ripe/overripe/rotten. "
+    "Spatial words (왼쪽/오른쪽/가까운/먼) go in params.by, NEVER in target_stages. "
+    "ONLY these four actions produce JSON: pick_only(집기/옮기기), sort(분류), stop(멈춤), rescan(재스캔). "
+    "For a control command reply with ONE JSON line. "
+    "For ANY question, status/count query, or chit-chat (예: '어떤 상태야?', '몇 개야?', '안녕') "
+    "reply with a brief Korean sentence and NEVER output JSON.\n"
+    "Examples:\n"
+    '가장 왼쪽 바나나 집어줘 => {"action":"pick_only","target_stages":[],"params":{"by":"leftmost"}}\n'
+    '오른쪽 거 옮겨줘 => {"action":"pick_only","target_stages":[],"params":{"by":"rightmost"}}\n'
+    '제일 가까운 거 잡아 => {"action":"pick_only","target_stages":[],"params":{"by":"nearest"}}\n'
+    '익은 것만 골라줘 => {"action":"sort","target_stages":["ripe"],"params":{}}\n'
+    '썩은 거 분류해 => {"action":"sort","target_stages":["rotten"],"params":{}}\n'
+    '멈춰 => {"action":"stop","target_stages":[],"params":{}}\n'
+    '오른쪽 거는 어떤 상태야? => 상태 조회는 아직 준비 중이에요. "오른쪽 거 집어줘"처럼 동작을 말해주세요 🍌\n'
+    '안녕 => 안녕하세요! 무엇을 도와드릴까요? 🍌'
 )
 
 
@@ -38,9 +48,13 @@ async def parse_utterance(text: str) -> Tuple[Optional[SortCommandModel], str]:
 
     # JSON이면 명령, 아니면 자연어 답변
     model = _try_parse(raw)
-    if model is None:
-        return None, raw
-    return model, _confirm_text(model)
+    if model is not None:
+        return model, _confirm_text(model)
+    # JSON 시도였으나 검증 실패(잘못된 action 등) → 원문 노출 대신 안내
+    if raw.strip().startswith("{"):
+        return None, ('그 명령은 아직 이해하지 못했어요. '
+                      '"왼쪽 거 집어줘", "익은 것만 분류해줘"처럼 말해보세요 🍌')
+    return None, raw
 
 
 def _try_parse(raw: str) -> Optional[SortCommandModel]:
@@ -111,6 +125,14 @@ async def _call_local(text: str) -> str:
 def _call_fake(text: str) -> str:
     """API 키 없이 개발용 — 키워드 규칙 기반 파서."""
     t = text.lower()
+    # 공간 선택: "가장 왼쪽 잡아줘" 등 → params.by
+    by = ("leftmost" if ("왼쪽" in t or "좌측" in t) else
+          "rightmost" if ("오른쪽" in t or "우측" in t) else
+          "nearest" if "가까" in t else
+          "farthest" if ("먼 " in t or "멀리" in t or "먼거" in t) else None)
+    if by and any(k in t for k in ("잡", "집", "옮")):
+        return json.dumps({"action": "pick_only", "target_stages": [],
+                           "params": {"by": by}})
     if any(k in t for k in ("멈춰", "정지", "중지", "stop")):
         return '{"action":"stop","target_stages":[],"params":{}}'
     if any(k in t for k in ("다시", "재스캔", "스캔", "rescan")):
