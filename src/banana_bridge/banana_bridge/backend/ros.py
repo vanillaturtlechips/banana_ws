@@ -103,6 +103,9 @@ class BridgeRos:
 
     def _on_detections(self, msg) -> None:  # noqa: ANN001
         self._dets = list(msg.detections)
+        # 웹에 박스 여러 개 그리도록 전체 감지도 LiveState에 실어보냄
+        self._live["detections"] = [_map_detection_msg(d) for d in msg.detections]
+        self._push()
 
     def scene_summary(self) -> str:
         # LLM 상태질문용: 현재 감지를 화면 왼→오 순으로 요약
