@@ -38,3 +38,41 @@ def _map_detection(system_state: Any) -> dict | None:
         "confidence": det.confidence,
         "box": {"x": det.box.x, "y": det.box.y, "w": det.box.w, "h": det.box.h},
     }
+
+
+# --- aggregator 우회: banana_command/Detection 메시지 → LiveState 직접 매핑 ---
+# aggregator가 생기면 이 경로를 to_live_state(SystemState)로 교체.
+def detection_msg_to_live_state(det: Any) -> dict:
+    """Detection.msg 하나 → 프론트 LiveState(JSON).
+
+    로봇/aggregator 없음 → robot 필드는 스텁. box는 픽셀 → % (프론트 계약).
+    """
+    return {
+        "robot": "idle",
+        "robotMessage": f"{det.stage} 감지 ({det.confidence:.2f})",
+        "detection": _map_detection_msg(det),
+        "logs": [],
+        "exceptions": [],
+    }
+
+
+def _map_detection_msg(det: Any) -> dict:
+    iw = det.image_width or 1
+    ih = det.image_height or 1
+    out = {
+        "stage": det.stage,
+        "confidence": round(float(det.confidence), 3),
+        "box": {  # 픽셀 → % (좌상단 x,y + w,h)
+            "x": round(det.x / iw * 100, 2),
+            "y": round(det.y / ih * 100, 2),
+            "w": round(det.w / iw * 100, 2),
+            "h": round(det.h / ih * 100, 2),
+        },
+    }
+    # 3D 스키마 필드가 있으면 함께 실어보냄 (없으면 생략 — 2D 노드 호환)
+    if hasattr(det, "angle_deg"):
+        out["angle_deg"] = round(float(det.angle_deg), 1)
+    if getattr(det, "has_pose", False):
+        p = det.grasp_pose.pose.position
+        out["graspPose"] = {"x": round(p.x, 4), "y": round(p.y, 4), "z": round(p.z, 4)}
+    return out

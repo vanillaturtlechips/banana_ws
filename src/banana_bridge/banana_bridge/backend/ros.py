@@ -13,7 +13,7 @@ from typing import AsyncIterator, Optional
 import numpy as np
 
 from ..domain.schema import SortCommandModel
-from ..domain.state import to_live_state
+from ..domain.state import to_live_state, detection_msg_to_live_state
 from ..transport.webrtc import FrameSource
 
 
@@ -38,7 +38,7 @@ class BridgeRos:
         from rclpy.node import Node
         from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
         from sensor_msgs.msg import Image
-        from banana_command.msg import SortCommand
+        from banana_command.msg import SortCommand, Detection
 
         self._SortCommand = SortCommand
         sensor_qos = QoSProfile(
@@ -50,10 +50,10 @@ class BridgeRos:
         self._node = Node("banana_bridge")
         self._cmd_pub = self._node.create_publisher(SortCommand, "/banana/command", 10)
 
-        # TODO: SystemState 타입/토픽/QoS는 aggregator 담당자와 합의
-        # from your_state_pkg.msg import SystemState
-        # self._node.create_subscription(SystemState, "/banana/system_state",
-        #                                self._on_state, 10)
+        # aggregator 우회(L2): 감지 토픽 직접 구독 → LiveState 로 웹에 push.
+        # aggregator(/banana/system_state) 생기면 아래를 그쪽 구독으로 교체.
+        self._node.create_subscription(
+            Detection, "/banana/detection", self._on_detection, 10)
         self._node.create_subscription(
             Image, "/camera/color/image_raw", self._on_image, sensor_qos)
 
@@ -82,6 +82,11 @@ class BridgeRos:
     def _on_state(self, msg) -> None:  # noqa: ANN001
         live = to_live_state(msg)
         self._loop.call_soon_threadsafe(self._q.put_nowait, live)  # 스레드→asyncio
+
+    def _on_detection(self, msg) -> None:  # noqa: ANN001
+        # aggregator 없이 Detection → LiveState 직접 변환 (L2)
+        live = detection_msg_to_live_state(msg)
+        self._loop.call_soon_threadsafe(self._q.put_nowait, live)
 
     def _on_image(self, msg) -> None:  # noqa: ANN001
         arr = np.frombuffer(msg.data, dtype=np.uint8).reshape(msg.height, msg.width, -1)
