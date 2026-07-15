@@ -128,11 +128,14 @@ source install/setup.bash
 > pkill -9 -f pick_place_system; pkill -9 -f move_group; sleep 3
 > ```
 
-**터미널 1 — MoveIt (fake 로봇 + rviz)**
+**터미널 1 — MoveIt (fake 로봇 + rviz + MTC 실행 capability)**
 ```bash
 source /opt/ros/jazzy/setup.bash && source ~/banana_ws/install/setup.bash
-ros2 launch doosan_mini_project_moveit_config demo.launch.py
+ros2 launch doosan_mini_project_moveit_config mtc_demo.launch.py
 ```
+> ⚠️ **`demo.launch.py`가 아니라 `mtc_demo.launch.py`!** 후자에만
+> `move_group/ExecuteTaskSolutionCapability`가 있어서 MTC가 계획한 solution을
+> **실제로 실행**할 수 있습니다. demo.launch.py는 계획돼도 실행이 안 됩니다.
 **터미널 2 — 픽앤플레이스 (`/detection` 구독)**
 ```bash
 source /opt/ros/jazzy/setup.bash && source ~/banana_ws/install/setup.bash
@@ -185,6 +188,7 @@ export PATH="$HOME/.bun/bin:$PATH" && cd ~/banana-frontend && bun --bun run dev
 | `Device or resource busy` | 이전 launch 잔존. 위 pkill 정리 |
 | LLM이 JSON 원문을 채팅에 노출 | fake→local 전환 후 재시작 (프롬프트는 시작 시 로드) |
 | WebRTC ICE failed | 양쪽 STUN 지정됨. 브리지 재빌드+강력새로고침 |
+| 계획은 되는데 로봇이 실행 안 됨 | move_group에 `ExecuteTaskSolutionCapability` 필요 → `mtc_demo.launch.py` 사용(`demo.launch.py` 말고) |
 | MoveIt `MTC planning ... solutions=0` | 캘리브 미완/작업범위 밖. 10번(실물 노트) 참고 |
 | perception이 `detector=StubDetector` | best.pt 없음 or venv 미활성. 7번/4번 확인 |
 
