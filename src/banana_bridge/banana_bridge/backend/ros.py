@@ -108,7 +108,7 @@ class BridgeRos:
         self._push()
 
     def scene_summary(self) -> str:
-        # LLM 상태질문용: 현재 감지를 화면 왼→오 순으로 요약
+        # LLM 상태질문용: 현재 감지를 화면 왼→오 순으로 요약 (좌표질문 위해 base_link 위치 포함)
         dets = getattr(self, "_dets", [])
         if not dets:
             return "감지된 바나나 없음."
@@ -118,8 +118,55 @@ class BridgeRos:
         for i, d in enumerate(ordered):
             pos = ("유일" if n == 1 else "가장왼쪽" if i == 0
                    else "가장오른쪽" if i == n - 1 else f"{i+1}번째")
-            parts.append(f"[{pos}] {d.stage}({_STAGE_KO.get(d.stage, d.stage)})")
+            parts.append(f"[{pos}] {d.stage}({_STAGE_KO.get(d.stage, d.stage)}) "
+                         f"{self._coord_str(d)}")
         return "감지된 바나나: " + ", ".join(parts)
+
+    @staticmethod
+    def _coord_str(d) -> str:  # noqa: ANN001
+        # 좌표: 우선 base_link grasp_pose(로봇 기준, MoveIt이 쓰는 값), 없으면 카메라 point
+        if getattr(d, "has_pose", False):
+            p = d.grasp_pose.pose.position
+            return f"위치(base_link, m): x={p.x:.3f}, y={p.y:.3f}, z={p.z:.3f}"
+        if getattr(d, "has_depth", False):
+            return (f"위치(카메라, m): x={d.point_x:.3f}, y={d.point_y:.3f}, "
+                    f"z={d.point_z:.3f}")
+        return "위치: 뎁스 없음"
+
+    def answer_coord_query(self, text: str):
+        """좌표/위치 질문이면 감지 데이터에서 '직접' 답한다(LLM 숫자 환각 방지).
+
+        좌표 질문이 아니면 None → 평소대로 LLM 처리.
+        """
+        from ..domain.llm import _infer_by
+        t = text.replace(" ", "")
+        if not any(k in t for k in ("좌표", "위치", "어디")):
+            return None
+        dets = getattr(self, "_dets", [])
+        if not dets:
+            return "지금 감지된 바나나가 없어요 🍌"
+        ordered = sorted(dets, key=lambda d: d.center_x)
+        by = _infer_by(text)
+        target, label = None, ""
+        if by == "leftmost":
+            target, label = ordered[0], "가장 왼쪽"
+        elif by == "rightmost":
+            target, label = ordered[-1], "가장 오른쪽"
+        elif by in ("nearest", "farthest"):
+            def dist(d):  # noqa: ANN001
+                if getattr(d, "has_pose", False):
+                    p = d.grasp_pose.pose.position
+                    return (p.x ** 2 + p.y ** 2) ** 0.5
+                return -d.center_y  # 뎁스 없으면 화면 근접 프록시
+            target = (min if by == "nearest" else max)(ordered, key=dist)
+            label = "가장 가까운" if by == "nearest" else "가장 먼"
+        elif len(ordered) == 1:
+            target, label = ordered[0], "유일한"
+        if target is None:
+            return ("어느 걸 말하는지 모르겠어요 — '왼쪽/오른쪽 좌표 뭐야?'처럼 "
+                    "말해줘요 🍌")
+        st = f"{target.stage}({_STAGE_KO.get(target.stage, target.stage)})"
+        return f"{label} {st} 바나나 {self._coord_str(target)} 🍌"
 
     def _on_detection(self, msg) -> None:  # noqa: ANN001
         # 감지 부분만 갱신 (robot 상태는 에이전트가 갱신)

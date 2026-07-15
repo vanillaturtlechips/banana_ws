@@ -72,35 +72,44 @@ private:
     }
 
     PickPlaceJob job;
-    job.frame_id = msg->header.frame_id.empty() ? "world" : msg->header.frame_id;
     job.class_id = static_cast<std::int32_t>(msg->class_id);
     job.confidence = msg->confidence;
 
-    job.object_pose.position.x = static_cast<double>(msg->point_x);
-    job.object_pose.position.y = static_cast<double>(msg->point_y);
-    job.object_pose.position.z = static_cast<double>(msg->point_z);
-
-    // OpenCV minAreaRect angle_deg를 메시지 frame의 +Z축 yaw로 직접 해석한다.
-    const double yaw_rad =
-      static_cast<double>(msg->angle_deg) * 3.14159265358979323846 / 180.0;
-    job.object_pose.orientation = yawToQuaternion(yaw_rad);
+    if (msg->has_pose) {
+      // ✅ perception이 hand-eye TF로 이미 계산한 base_link(Z-up) grasp_pose 사용.
+      //    camera_color_optical_frame의 point+angle을 그대로 쓰면 광축(+Z)이 world에서
+      //    아래를 향해 물체 프레임 Z가 뒤집히고 → GenerateGraspPose가 뒤집힌 grasp를 만들어
+      //    IK가 팔을 특이점으로 접어 Approach가 불가능해진다. Z-up 프레임을 써야 top-down이 됨.
+      job.frame_id = msg->grasp_pose.header.frame_id.empty()
+                       ? "base_link" : msg->grasp_pose.header.frame_id;
+      job.object_pose = msg->grasp_pose.pose;
+    } else {
+      // 폴백: grasp_pose 없으면(뎁스/TF 결손) camera 프레임 point+angle로.
+      job.frame_id = msg->header.frame_id.empty() ? "world" : msg->header.frame_id;
+      job.object_pose.position.x = static_cast<double>(msg->point_x);
+      job.object_pose.position.y = static_cast<double>(msg->point_y);
+      job.object_pose.position.z = static_cast<double>(msg->point_z);
+      const double yaw_rad =
+        static_cast<double>(msg->angle_deg) * 3.14159265358979323846 / 180.0;
+      job.object_pose.orientation = yawToQuaternion(yaw_rad);
+    }
 
     if (!mtc_node_->submitJob(job)) {
       RCLCPP_WARN(
         get_logger(),
-        "MTC busy: detection rejected, class_id=%u, frame=%s, "
-        "point=(%.3f, %.3f, %.3f), yaw=%.2f deg",
+        "MTC busy: detection rejected, class_id=%u, frame=%s, point=(%.3f, %.3f, %.3f)",
         static_cast<unsigned int>(msg->class_id), job.frame_id.c_str(),
-        msg->point_x, msg->point_y, msg->point_z, msg->angle_deg);
+        job.object_pose.position.x, job.object_pose.position.y, job.object_pose.position.z);
       return;
     }
 
     RCLCPP_INFO(
       get_logger(),
       "Detection accepted: stage=%s, class_id=%u, confidence=%.3f, frame=%s, "
-      "point=(%.3f, %.3f, %.3f), yaw=%.2f deg",
+      "point=(%.3f, %.3f, %.3f), pose_src=%s",
       msg->stage.c_str(), static_cast<unsigned int>(msg->class_id), msg->confidence,
-      job.frame_id.c_str(), msg->point_x, msg->point_y, msg->point_z, msg->angle_deg);
+      job.frame_id.c_str(), job.object_pose.position.x, job.object_pose.position.y,
+      job.object_pose.position.z, msg->has_pose ? "grasp_pose(base_link)" : "point+angle(camera)");
   }
 
   std::shared_ptr<MTCTaskNode> mtc_node_;

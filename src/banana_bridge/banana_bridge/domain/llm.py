@@ -38,9 +38,11 @@ SYSTEM_PROMPT = (
     '익은 것만 골라줘 => {"action":"sort","target_stages":["ripe"],"params":{}}\n'
     '썩은 거 분류해 => {"action":"sort","target_stages":["rotten"],"params":{}}\n'
     '멈춰 => {"action":"stop","target_stages":[],"params":{}}\n'
-    "If a [현재 감지] block is given (왼쪽→오른쪽 순서 리스트), use it to answer "
-    "status questions (뭐야 / 어떤 상태야 / 왼쪽·오른쪽 뭐야 / 몇 개야) in Korean.\n"
+    "If a [현재 감지] block is given (왼쪽→오른쪽 순서 리스트, 각 항목에 위치 좌표 포함), "
+    "use it to answer status/coordinate questions "
+    "(뭐야 / 어떤 상태야 / 왼쪽·오른쪽 뭐야 / 몇 개야 / 좌표 뭐야 / 위치 어디야) in Korean.\n"
     '오른쪽 거는 어떤 상태야? => (감지 참고) 오른쪽 건 안 익음(unripe)이에요 🍌\n'
+    '왼쪽 거 좌표 뭐야? => (감지 참고) 가장 왼쪽 건 base_link 기준 x=0.38, y=0.07, z=0.22 m 예요 🍌\n'
     '안녕 => 안녕하세요! 무엇을 도와드릴까요? 🍌'
 )
 
@@ -85,7 +87,16 @@ def _try_parse(raw: str) -> Optional[SortCommandModel]:
         return None
 
 
+_BY_KO = {"leftmost": "가장 왼쪽", "rightmost": "가장 오른쪽",
+          "nearest": "가장 가까운", "farthest": "가장 먼"}
+
+
 def _confirm_text(model: SortCommandModel) -> str:
+    # 공간 선택(by)이 있으면 그걸 우선 표시 — target_stages만 보면 spatial pick이
+    # 항상 "전체"로 잘못 보인다("오른쪽거" → 실제 1개인데 전체로 오인).
+    by = model.params.get("by")
+    if by:
+        return f"'{model.action.value}' 명령 접수 (대상: {_BY_KO.get(by, by)} 1개) 🍌"
     stages = ", ".join(s.value for s in model.target_stages) or "전체"
     return f"'{model.action.value}' 명령 접수 (대상: {stages}) 🍌"
 

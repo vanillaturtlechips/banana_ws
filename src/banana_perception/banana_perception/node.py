@@ -52,6 +52,12 @@ class PerceptionNode(Node):
         self._device = p("device", "cuda:0").value
         self._base_frame = p("base_frame", "base_link").value
         self._depth_scale = p("depth_scale", 0.001).value   # 16UC1 mm → m
+        # hand-eye 잔차 보정(base 기준, m). HandEyeCal 도구의 offset_x/y/z_mm와 동일 의미.
+        # 캘리브 후 vision-move로 확인한 값: x=-0.10 (감지가 실제보다 x로 10cm 멀게 나옴).
+        self._cal_off = (
+            p("handeye_offset_x", -0.10).value,
+            p("handeye_offset_y", 0.0).value,
+            p("handeye_offset_z", 0.0).value)
 
         self._detector = make_detector(
             self._model_path, self._classes, self._conf, self._device)
@@ -162,6 +168,10 @@ class PerceptionNode(Node):
             tf = self._tf_buffer.lookup_transform(
                 self._base_frame, header.frame_id, rclpy.time.Time())
             pb = tf2_geometry_msgs.do_transform_point(pt, tf)
+            # hand-eye 잔차 보정 (base 기준) — HandEyeCal offset_x/y/z_mm와 동일
+            pb.point.x += self._cal_off[0]
+            pb.point.y += self._cal_off[1]
+            pb.point.z += self._cal_off[2]
             m.grasp_pose.header.frame_id = self._base_frame
             m.grasp_pose.header.stamp = header.stamp
             m.grasp_pose.pose.position = pb.point

@@ -66,6 +66,10 @@ def generate_launch_description() -> LaunchDescription:
                               # 학습 촬영과 동일 해상도(1280x800)로 맞춰 색·크기 도메인시프트 완화
                               "rgb_camera.color_profile": "1280x800x30",
                               "initial_reset": "true",   # wedge된 장치 기동 시 리셋
+                              # ⚠️ RealSense 자체 카메라 TF 끔. 안 끄면 camera_color_optical_frame이
+                              #    RealSense(camera_color_frame 자식) + hand-eye(base_link 자식)로
+                              #    부모가 둘 → TF 트리 분리. hand-eye가 optical을 단일 발행하게 함.
+                              "publish_tf": "false",
                               "enable_infra": "false",
                               "enable_infra1": "false",
                               "enable_infra2": "false"}.items(),

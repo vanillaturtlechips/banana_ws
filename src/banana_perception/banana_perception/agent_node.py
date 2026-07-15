@@ -14,6 +14,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
+from action_msgs.srv import CancelGoal
 from banana_command.msg import SortCommand, Detection, DetectionArray
 
 from .agent import select_object, check_feasibility, PICKABLE
@@ -29,6 +30,21 @@ class AgentNode(Node):
         self._status_topic = p("agent_status_topic", "/banana/agent_status").value
         # MoveIt(pick_place_command_node)이 구독하는 토픽 — 선택된 Detection 발행
         self._moveit_topic = p("moveit_detection_topic", "/detection").value
+
+        # 🛑 안전정지: stop 시 취소할 액션 서버들. 각 서버가 노출하는
+        #    <action>/_action/cancel_goal (action_msgs/CancelGoal)로 진행 중 goal을
+        #    전부 취소 → 움직이던 팔/그리퍼/MTC 실행이 즉시 멈춘다.
+        default_cancel = [
+            "/arm_controller/follow_joint_trajectory",
+            "/hand_controller/follow_joint_trajectory",
+            "/execute_task_solution",
+        ]
+        self._cancel_actions = list(
+            p("stop_cancel_actions", default_cancel).value)
+        self._cancel_clients = {
+            a: self.create_client(CancelGoal, a + "/_action/cancel_goal")
+            for a in self._cancel_actions
+        }
 
         self._dets: list = []
         self.create_subscription(DetectionArray, dets_topic, self._on_dets, 10)
@@ -49,7 +65,11 @@ class AgentNode(Node):
             params = {}
         by = params.get("by")
 
-        if action in ("stop", "rescan"):
+        if action == "stop":
+            self._stop_robot()
+            self._emit(action, True, None, None, "정지: 진행 중 동작 취소", by)
+            return
+        if action == "rescan":
             self._emit(action, True, None, None, "", by)
             return
 
@@ -69,6 +89,19 @@ class AgentNode(Node):
             self._det_pub.publish(target)
             if getattr(target, "has_pose", False):
                 self._pose_pub.publish(target.grasp_pose)
+
+    def _stop_robot(self) -> None:
+        """진행 중인 팔/그리퍼/MTC 실행을 즉시 취소(비상정지).
+
+        각 액션 서버의 CancelGoal에 빈 goal_info를 보내면 활성 goal 전체가 취소된다.
+        서버가 아직 안 떠 있으면 조용히 건너뜀(취소할 동작이 없다는 뜻).
+        """
+        for name, cli in self._cancel_clients.items():
+            if not cli.service_is_ready():
+                continue
+            # 빈 요청 = goal_id 0 + stamp 0 → 해당 서버의 모든 활성 goal 취소
+            cli.call_async(CancelGoal.Request())
+            self.get_logger().warn(f"🛑 STOP: {name} goal 취소 요청")
 
     def _emit(self, action, ok, target, dest, reason, by) -> None:
         status = {

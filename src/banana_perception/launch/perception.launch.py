@@ -35,18 +35,21 @@ def generate_launch_description() -> LaunchDescription:
         Node(package="banana_perception", executable="fake_camera",
              condition=IfCondition(use_fake), output="screen"),
 
-        # ⚠️ placeholder hand-eye: base_link → camera_color_optical_frame
-        #    (탑다운 예시: 카메라가 base 위 z=0.9m, 아래를 봄 → roll=pi)
+        # ✅ 실측 hand-eye: base_link → camera_color_optical_frame
+        #    PinkLab HandEyeCal (eye-to-hand, TSAI, 12샘플, verify std max 9.94mm=GOOD, 2026-07-14)
+        #    카메라 위치 base 기준 (0.839, -0.014, 0.926)m, yaw≈91°(광축 아래). 원본: 결과/T_base_camera.yaml
+        #    쿼터니언으로 넣어 회전 정밀 유지(RPY 변환 오차 방지).
         Node(package="tf2_ros", executable="static_transform_publisher",
              name="handeye_static_tf",
              condition=IfCondition(pub_handeye),
              arguments=[
-                 "--x", "0.40", "--y", "0.0", "--z", "0.90",
-                 "--roll", "3.14159", "--pitch", "0.0", "--yaw", "0.0",
+                 "--x", "0.839394", "--y", "-0.014461", "--z", "0.925965",
+                 "--qx", "-0.700741", "--qy", "-0.712613",
+                 "--qz", "-0.016235", "--qw", "0.029682",
                  "--frame-id", "base_link",
-                 # 카메라 루트(camera_link)로 연결 — optical은 RealSense가 발행하므로
-                 # 여기서 optical을 직접 가리키면 부모 충돌. base_link→camera_link→…→optical.
-                 "--child-frame-id", "camera_link",
+                 # RealSense가 카메라 내부 TF를 발행 안 하므로 optical을 직접 연결한다.
+                 # (RealSense publish_tf가 켜져 camera_link→optical이 있으면 camera_link로 바꿀 것)
+                 "--child-frame-id", "camera_color_optical_frame",
              ],
              output="screen"),
     ])

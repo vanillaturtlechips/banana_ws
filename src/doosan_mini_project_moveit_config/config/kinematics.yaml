@@ -1,11 +1,16 @@
-# arm:
-#   kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
-#   kinematics_solver_search_resolution: 0.0050000000000000001
-#   kinematics_solver_timeout: 0.0050000000000000001
-
+# IK 솔버: TRAC-IK (KDL 대체).
+#   KDL은 해가 있어도 작업영역 가장자리에서 seed 수렴 실패로 자주 포기한다
+#   (예: 멀리 있는 물체를 2번 조인트 내리면 닿는데 "no IK"). TRAC-IK는 KDL의
+#   드롭인 대체로, 여러 시드+2가지 알고리즘 병행으로 훨씬 잘 찾고 빠르다.
+#   Speed=가장 빠른 해, Distance=최소 이동, Manip*=조작성 최적. pick엔 Distance 무난.
 arm:
-  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
-  kinematics_solver_search_resolution: 0.01
-  # IK solver 내부의 개별 탐색에 허용되는 시간
-  kinematics_solver_timeout: 0.02
-  kinematics_solver_attempts: 1
+  kinematics_solver: trac_ik_kinematics_plugin/TRAC_IKKinematicsPlugin
+  kinematics_solver_timeout: 0.05
+  kinematics_solver_attempts: 3
+  solve_type: Distance
+
+# 이전 KDL 설정 (참고용, 문제 있어 교체):
+#   kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+#   kinematics_solver_search_resolution: 0.01
+#   kinematics_solver_timeout: 0.02
+#   kinematics_solver_attempts: 1

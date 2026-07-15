@@ -76,6 +76,27 @@ MTCTaskNode::MTCTaskNode(const rclcpp::NodeOptions& options)
       "max_task_solutions",
       max_task_solutions_);
   }
+
+  // 보관함 좌표 (실물 보관함 위치로 교체) — 정책: bin1=ripe+overripe, bin2=rotten
+  if (!has_parameter("grasp_pitch_deg")) {
+    declare_parameter("grasp_pitch_deg", grasp_pitch_deg_);
+  }
+
+  if (!has_parameter("bin1_x")) { declare_parameter("bin1_x", bin1_x_); }
+  if (!has_parameter("bin1_y")) { declare_parameter("bin1_y", bin1_y_); }
+  if (!has_parameter("bin2_x")) { declare_parameter("bin2_x", bin2_x_); }
+  if (!has_parameter("bin2_y")) { declare_parameter("bin2_y", bin2_y_); }
+
+  // 안전 충돌체 (테이블/보관함) — 실물 확정 시 add_collision_scene:=true
+  if (!has_parameter("add_collision_scene")) {
+    declare_parameter("add_collision_scene", add_collision_scene_);
+  }
+  if (!has_parameter("table_z")) { declare_parameter("table_z", table_z_); }
+  if (!has_parameter("bin_wall_height")) {
+    declare_parameter("bin_wall_height", bin_wall_height_);
+  }
+  if (!has_parameter("bin_size")) { declare_parameter("bin_size", bin_size_); }
+
   get_parameter("object_size_x", object_size_x_);
   get_parameter("object_size_y", object_size_y_);
   get_parameter("object_size_z", object_size_z_);
@@ -86,6 +107,15 @@ MTCTaskNode::MTCTaskNode(const rclcpp::NodeOptions& options)
   get_parameter("ik_min_solution_distance", ik_min_solution_distance_);
   get_parameter("connect_timeout_sec", connect_timeout_sec_);
   get_parameter("max_task_solutions", max_task_solutions_);
+  get_parameter("grasp_pitch_deg", grasp_pitch_deg_);
+  get_parameter("bin1_x", bin1_x_);
+  get_parameter("bin1_y", bin1_y_);
+  get_parameter("bin2_x", bin2_x_);
+  get_parameter("bin2_y", bin2_y_);
+  get_parameter("add_collision_scene", add_collision_scene_);
+  get_parameter("table_z", table_z_);
+  get_parameter("bin_wall_height", bin_wall_height_);
+  get_parameter("bin_size", bin_size_);
 
   grasp_angle_delta_ = std::max(grasp_angle_delta_, 0.001);
   pick_max_ik_solutions_ = std::max(pick_max_ik_solutions_, 1);
@@ -269,9 +299,51 @@ bool MTCTaskNode::processJob(const PickPlaceJob& job)
   return true;
 }
 
+void MTCTaskNode::addSafetySurfaces()
+{
+  // 🧱 테이블(지지면) + 보관함 2개를 world 기준 충돌체로 추가.
+  //    실물 위치가 확정돼 add_collision_scene:=true 일 때만 호출된다(placeholder 보호).
+  moveit::planning_interface::PlanningSceneInterface psi;
+  std::vector<moveit_msgs::msg::CollisionObject> objs;
+
+  auto make_box = [](const std::string& id, double x, double y, double z,
+                     double sx, double sy, double sz) {
+    moveit_msgs::msg::CollisionObject o;
+    o.id = id;
+    o.header.frame_id = "world";
+    o.operation = moveit_msgs::msg::CollisionObject::ADD;
+    shape_msgs::msg::SolidPrimitive p;
+    p.type = shape_msgs::msg::SolidPrimitive::BOX;
+    p.dimensions = {sx, sy, sz};
+    geometry_msgs::msg::Pose pose;
+    pose.orientation.w = 1.0;
+    pose.position.x = x; pose.position.y = y; pose.position.z = z;
+    o.primitives.push_back(p);
+    o.primitive_poses.push_back(pose);
+    return o;
+  };
+
+  // 테이블: 넓고 얇은 판, 윗면이 table_z (그 중심은 table_z-1cm)
+  objs.push_back(make_box("table", 0.5, 0.0, table_z_ - 0.01, 1.2, 1.2, 0.02));
+  // 보관함: 바닥 얇은 판 (벽까지 넣으면 놓기 접근이 막힐 수 있어 바닥만; 벽은 실측 후)
+  objs.push_back(make_box("bin1", bin1_x_, bin1_y_, table_z_ - 0.01,
+                          bin_size_, bin_size_, 0.02));
+  objs.push_back(make_box("bin2", bin2_x_, bin2_y_, table_z_ - 0.01,
+                          bin_size_, bin_size_, 0.02));
+
+  psi.applyCollisionObjects(objs);
+  RCLCPP_INFO(get_logger(),
+    "안전 충돌체 추가: table(z윗면=%.3f) + bin1(%.2f,%.2f) + bin2(%.2f,%.2f)",
+    table_z_, bin1_x_, bin1_y_, bin2_x_, bin2_y_);
+}
+
 bool MTCTaskNode::setupPlanningScene(const PickPlaceJob& job)
 {
   moveit::planning_interface::PlanningSceneInterface psi;
+
+  if (add_collision_scene_) {
+    addSafetySurfaces();
+  }
 
   psi.removeCollisionObjects({"object"});
 
@@ -325,29 +397,26 @@ MTCTaskNode::selectPlacePose(std::int32_t class_id) const
 
   target.pose.position.z = object_size_z_ / 2.0;
 
+  // 분류 정책(2 보관함):
+  //   ripe(1), overripe(2) → bin1 (적당·너무익음)
+  //   rotten(3)            → bin2 (썩음/쓰레기통)
+  //   unripe(0)은 에이전트가 안 집으므로 여기 도달하지 않음(안전상 bin2로 폴백)
   switch (class_id) {
-    case 0:
-      target.pose.position.x = 0.60;
-      target.pose.position.y = -0.20;
-      break;
-
     case 1:
-      target.pose.position.x = 0.60;
-      target.pose.position.y = 0.00;
-      break;
-
     case 2:
-      target.pose.position.x = 0.60;
-      target.pose.position.y = 0.20;
+      target.pose.position.x = bin1_x_;
+      target.pose.position.y = bin1_y_;
       break;
 
     case 3:
-      target.pose.position.x = 0.45;
-      target.pose.position.y = 0.35;
+      target.pose.position.x = bin2_x_;
+      target.pose.position.y = bin2_y_;
       break;
 
     default:
-      throw std::invalid_argument("class_id must be 0, 1, 2, or 3");
+      throw std::invalid_argument(
+        "class_id must be 1(ripe), 2(overripe), or 3(rotten); "
+        "unripe(0) is never picked by policy");
   }
 
   return target;
@@ -379,6 +448,8 @@ mtc::Task MTCTaskNode::createTask(
 
   auto sampling_planner =
     std::make_shared<mtc::solvers::PipelinePlanner>(shared_from_this());
+  // ⚡ Connect(이동) 계획이 300초씩 걸려 사실상 펜딩. OMPL 각 계획을 1초로 제한.
+  sampling_planner->setTimeout(1.0);
 
   auto interpolation_planner =
     std::make_shared<mtc::solvers::JointInterpolationPlanner>();
@@ -446,8 +517,9 @@ mtc::Task MTCTaskNode::createTask(
         mtc::Stage::PARENT,
         {"group"});
 
-      stage->setMinMaxDistance(0.10, 0.15);
+      stage->setMinMaxDistance(0.03, 0.15);
 
+      // world -Z(수직 하강) 접근 — 수직 top-down grasp의 표준 접근 방향.
       geometry_msgs::msg::Vector3Stamped direction;
       direction.header.frame_id = "world";
       direction.vector.z = -1.0;
@@ -471,12 +543,18 @@ mtc::Task MTCTaskNode::createTask(
       Eigen::Isometry3d grasp_frame_transform =
         Eigen::Isometry3d::Identity();
 
+      // 기존: 수직 아래(top-down). 여기에 툴 X축 pitch 기울기를 더해 접근을 비스듬히.
+      // GenerateGraspPose가 yaw를 한 바퀴 스윕하므로, 이 고정 기울기가 사방 방향으로
+      // 퍼져 TRAC-IK가 base쪽으로 기운 '닿는' grasp를 찾는다(먼 물체 대응). pitch=0이면 종전과 동일.
+      const double pitch = grasp_pitch_deg_ * M_PI / 180.0;
       const Eigen::Quaterniond rotation =
         Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ());
+        Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitX());
 
       grasp_frame_transform.linear() = rotation.toRotationMatrix();
-      grasp_frame_transform.translation().z() = 0.145;
+      // 그리퍼 밑동→손가락끝 실측 ~12cm. 이보다 짧으면 밑동이 물체박스에 겹쳐 IK 탈락.
+      grasp_frame_transform.translation().z() = 0.12;
 
       auto wrapper = std::make_unique<mtc::stages::ComputeIK>(
         "Compute Pick IK",
@@ -541,7 +619,7 @@ mtc::Task MTCTaskNode::createTask(
         mtc::Stage::PARENT,
         {"group"});
 
-      stage->setMinMaxDistance(0.10, 0.30);
+      stage->setMinMaxDistance(0.03, 0.30);
       stage->setIKFrame(hand_frame);
       stage->properties().set("marker_ns", "lift_object");
 
@@ -602,7 +680,7 @@ mtc::Task MTCTaskNode::createTask(
         mtc::Stage::PARENT,
         {"group"});
 
-      stage->setMinMaxDistance(0.10, 0.15);
+      stage->setMinMaxDistance(0.03, 0.15);
 
       geometry_msgs::msg::Vector3Stamped direction;
       direction.header.frame_id = "world";
@@ -685,7 +763,7 @@ mtc::Task MTCTaskNode::createTask(
         mtc::Stage::PARENT,
         {"group"});
 
-      stage->setMinMaxDistance(0.12, 0.35);
+      stage->setMinMaxDistance(0.03, 0.35);
       stage->setIKFrame(hand_frame);
       stage->properties().set("marker_ns", "retreat_place");
 
