@@ -8,6 +8,7 @@ project(doosan_mini_project_moveit_config)
 # =========================
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 
 find_package(std_msgs REQUIRED)
@@ -22,6 +23,10 @@ find_package(moveit_task_constructor_msgs REQUIRED)
 # find_package(rosidl_default_generators REQUIRED)
 
 find_package(banana_command REQUIRED)
+
+find_package(builtin_interfaces REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(trajectory_msgs REQUIRED)
 
 # =========================
 
@@ -64,6 +69,7 @@ cxx_std_17
 
 ament_target_dependencies(mtc_node
 rclcpp
+ament_index_cpp
 std_msgs
 geometry_msgs
 shape_msgs
@@ -107,6 +113,45 @@ moveit_task_constructor_core
 moveit_task_constructor_msgs
 )
 
+# =========================
+
+# Executable: trajectory subscriber (json file saver)
+
+# =========================
+
+add_executable(
+  mtc_solution_json_saver
+  src/mtc_solution_json_saver.cpp
+)
+
+target_compile_features(
+  mtc_solution_json_saver
+  PUBLIC
+  cxx_std_17
+)
+
+target_compile_definitions(
+  mtc_solution_json_saver
+  PRIVATE
+  PACKAGE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+ament_target_dependencies(
+  mtc_solution_json_saver
+  rclcpp
+  ament_index_cpp
+  moveit_task_constructor_msgs
+  moveit_msgs
+  trajectory_msgs
+  std_msgs
+  builtin_interfaces
+)
+
+target_link_libraries(
+  mtc_solution_json_saver
+  nlohmann_json::nlohmann_json
+  Threads::Threads
+)
 # =========================
 
 # Link generated message
@@ -153,6 +198,12 @@ DESTINATION
 lib/${PROJECT_NAME}
 )
 
+install(
+  TARGETS mtc_solution_json_saver
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 # =========================
 
 # Install headers
@@ -190,6 +241,13 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.setup_assistant")
 install(
 FILES .setup_assistant
+DESTINATION share/${PROJECT_NAME}
+)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/trajectories")
+install(
+DIRECTORY trajectories
 DESTINATION share/${PROJECT_NAME}
 )
 endif()

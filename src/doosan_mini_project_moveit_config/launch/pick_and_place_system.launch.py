@@ -33,6 +33,7 @@ def generate_launch_description():
                 "use_sim_time": False,
 
                 # MTC 탐색량 제한 기본값
+<<<<<<< HEAD
                 # ⚠️ 2π면 grasp 방향을 1개만 샘플 → 그 하나가 IK 실패하면 solutions=0.
                 #    작게(0.2rad≈11.5°) 주면 접근축 둘레로 ~31개 방향을 뿌려 IK 성공률↑
                 # ⚡ 속도 튜닝: 계획이 300초씩 걸려 사실상 펜딩. 탐색을 줄여 ~30초 내로.

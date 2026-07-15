@@ -50,12 +50,17 @@
   <!-- ========================= -->
 
 <depend>rclcpp</depend>
+<depend>ament_index_cpp</depend>
 
 <depend>std_msgs</depend> <depend>geometry_msgs</depend> <depend>shape_msgs</depend> <depend>moveit_msgs</depend>
 
 <depend>banana_command</depend>
 
 <depend>moveit_task_constructor_core</depend> <depend>moveit_ros_planning_interface</depend> <depend>moveit_task_constructor_msgs</depend>
+
+<depend>builtin_interfaces</depend>
+<depend>nlohmann_json</depend>
+<depend>trajectory_msgs</depend>
 
   <!-- ========================= -->
 

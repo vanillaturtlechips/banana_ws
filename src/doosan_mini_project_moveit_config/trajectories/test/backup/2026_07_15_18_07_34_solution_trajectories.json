@@ -1,0 +1,279 @@
+{
+  "created_at": "2026_07_15_18_07_34",
+  "scene_number": "test",
+  "trajectories": [
+    {
+      "current_task": "Move Home",
+      "description": "3_",
+      "index": 1,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 3,
+      "trajectory": [
+        "0.000000",
+        "0.000000",
+        "1.570800",
+        "0.000000",
+        "1.570800",
+        "0.000000"
+      ]
+    },
+    {
+      "current_task": "Open Gripper",
+      "description": "4_",
+      "index": 2,
+      "joint_names": [
+        "rh_l1",
+        "rh_l2",
+        "rh_p12_rn",
+        "rh_r2"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 4,
+      "trajectory": [
+        "0.000000",
+        "0.000000",
+        "0.000000",
+        "0.000000"
+      ]
+    },
+    {
+      "current_task": "Connect to Pick",
+      "description": "5_",
+      "index": 3,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "",
+      "stage_id": 5,
+      "trajectory": [
+        "0.380589",
+        "0.476201",
+        "1.265863",
+        "0.000062",
+        "1.399688",
+        "-0.666773"
+      ]
+    },
+    {
+      "current_task": "Approach Object",
+      "description": "7_",
+      "index": 4,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "CartesianPath",
+      "stage_id": 7,
+      "trajectory": [
+        "0.380509",
+        "0.615862",
+        "1.478435",
+        "0.000009",
+        "1.047293",
+        "-0.666696"
+      ]
+    },
+    {
+      "current_task": "Close Gripper",
+      "description": "11_",
+      "index": 5,
+      "joint_names": [
+        "rh_l1",
+        "rh_l2",
+        "rh_p12_rn",
+        "rh_r2"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 11,
+      "trajectory": [
+        "1.033100",
+        "1.000000",
+        "1.057500",
+        "1.000000"
+      ]
+    },
+    {
+      "current_task": "Lift Object",
+      "description": "13_",
+      "index": 6,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "CartesianPath",
+      "stage_id": 13,
+      "trajectory": [
+        "0.380507",
+        "0.492509",
+        "0.836435",
+        "0.000008",
+        "1.812645",
+        "-0.666692"
+      ]
+    },
+    {
+      "current_task": "Return Home With Object",
+      "description": "14_",
+      "index": 7,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 14,
+      "trajectory": [
+        "0.000000",
+        "0.000000",
+        "1.570800",
+        "0.000000",
+        "1.570800",
+        "0.000000"
+      ]
+    },
+    {
+      "current_task": "Connect to Place",
+      "description": "15_",
+      "index": 8,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6",
+        "rh_l1",
+        "rh_l2",
+        "rh_p12_rn",
+        "rh_r2"
+      ],
+      "planner": ", JointInterpolationPlanner",
+      "stage_id": 15,
+      "trajectory": [
+        "0.000005",
+        "0.657708",
+        "0.986257",
+        "0.000079",
+        "1.497702",
+        "0.000058",
+        "1.033100",
+        "1.000000",
+        "1.057500",
+        "1.000000"
+      ]
+    },
+    {
+      "current_task": "Approach Place",
+      "description": "17_",
+      "index": 9,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "CartesianPath",
+      "stage_id": 17,
+      "trajectory": [
+        "0.000006",
+        "0.766684",
+        "1.219837",
+        "0.000008",
+        "1.155068",
+        "-0.000000"
+      ]
+    },
+    {
+      "current_task": "Open Gripper at Place",
+      "description": "20_",
+      "index": 10,
+      "joint_names": [
+        "rh_l1",
+        "rh_l2",
+        "rh_p12_rn",
+        "rh_r2"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 20,
+      "trajectory": [
+        "0.000000",
+        "0.000000",
+        "0.000000",
+        "0.000000"
+      ]
+    },
+    {
+      "current_task": "Retreat From Place",
+      "description": "23_",
+      "index": 11,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "CartesianPath",
+      "stage_id": 23,
+      "trajectory": [
+        "0.000004",
+        "0.855036",
+        "0.168543",
+        "0.000009",
+        "2.118009",
+        "0.000006"
+      ]
+    },
+    {
+      "current_task": "Final Home",
+      "description": "24_",
+      "index": 12,
+      "joint_names": [
+        "joint_1",
+        "joint_2",
+        "joint_3",
+        "joint_4",
+        "joint_5",
+        "joint_6"
+      ],
+      "planner": "JointInterpolationPlanner",
+      "stage_id": 24,
+      "trajectory": [
+        "0.000000",
+        "0.000000",
+        "1.570800",
+        "0.000000",
+        "1.570800",
+        "0.000000"
+      ]
+    }
+  ],
+  "trajectory_count": 12
+}
